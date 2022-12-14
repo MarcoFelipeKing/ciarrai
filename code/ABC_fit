@@ -1,0 +1,88 @@
+# solve the ODE for airborne particle conentration
+# dC/dt = E/V - lambda*C
+# C = concentration 
+# E = emission rate
+# V = volume of air
+# lambda = decay rate (deposition and ventilation removal)
+
+# We will compare the results of the ODE solution with experimental data to infer the decay rate and emission rate
+
+
+# import libraries
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# define constants
+V = 4*3*3 # volume of air
+
+# the analytical solution to the ODE
+def conc_function(t,E,V,k, lambda_):
+    return E/V * (1 - np.exp(-lambda_*t)+k.exp(-lambda_*t)) # K is a constant
+
+
+# import experimental data. the file has headers and the first column is time
+data = pd.read_csv('data/vmn_mp_conc.txt', sep='\t',header=0)
+print(data.head())
+
+# plot the experimental data
+#plt.plot(data['time'], data['conc_08'], 'o', label='Experimental data')
+
+
+# program an ABC algorithm to infer the decay rate k and emission rate E
+# define the prior distributions
+# the prior distribution for the k rate is a uniform distribution between 0 and 1
+# the prior distribution for the emission rate is a uniform distribution between 0 and 1
+
+# define the prior distributions to be uniform with range 10^-3 to 10^3
+k_prior = np.random.uniform(0,1,1000)
+E_prior = np.random.uniform(0,1,1000)
+lambda_prior = np.random.uniform(0,1,1000)
+
+# define the distance function
+# the distance function is the sum of the squared differences between the model and the data
+def distance(model,data):
+    return np.sum((model - data)**2)
+
+# define the ABC algorithm
+# for 1000 different E and k values run the model and calculate the distance
+# if the distance is less than 0.1, save the E and k values
+
+def ABC(E_prior,k_prior,lambda_prior):
+    E_post = []
+    k_post = []
+    lambda_post = []
+    for i in range(1000):
+        E = E_prior[i]
+        k = k_prior[i]
+        lambda_ = lambda_prior[i]
+        # solve piece-wise. between 0 and 10 minutes, E= prior value
+        # between 10 and 45 minutes, E = 0.
+        # solve C at the same time points as the data['time']
+        t1 = data['time'][0:31]
+        t2 = data['time'][31:136]
+        C1 = conc_function(t1,E,V,k,lambda_)
+        C2 = conc_function(t2,0,V,k,lambda_)
+        C = np.concatenate((C1,C2))
+        dist = distance(C,data['conc_08'])
+        if dist < 1:
+            E_post.append(E)
+            k_post.append(k)
+            lambda_post.append(lambda_)
+    return E_post, k_post, lambda_post
+
+
+# run the ABC algorithm
+E_post, k_post = ABC(E_prior,k_prior,lambda_prior)
+#save the posterior distributions
+np.savetxt('data/E_post.txt', E_post)
+np.savetxt('data/k_post.txt', k_post)
+np.savetxt('data/lambda_post.txt', lambda_post)
+
+# plot the posterior distribution
+plt.hist(E_post, bins=20, label='Posterior E')
+plt.hist(k_post, bins=20, label='Posterior k') 
+plt.hist(lambda_post, bins=20, label='Posterior lambda') 
+plt.legend()
+plt.show()
+
