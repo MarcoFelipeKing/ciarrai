@@ -1,5 +1,3 @@
-# 1D diffusion model over time with Gaussian noise and ABC
-
 import numpy as np
 
 def point_source_pde(C, D, k, dx, dt):
@@ -43,19 +41,14 @@ k = 0.01
 dx = 0.1
 dt = 0.001
 
-
-# Set release start and end times
-t_start = 500
-t_end = 1500
-
 # Set initial concentration
 C = np.zeros(100)
+C[50] = 1
 
-# Set concentration at center to 1 for release period
-for t in range(t_start, t_end):
-    C[50] = 1
+# Solve PDE for 1000 time steps
+for t in range(1000):
     C = point_source_pde(C, D, k, dx, dt)
-
+#print(C)
 # Plot concentration profile at 5 different times
 import matplotlib.pyplot as plt
 plt.plot(C)
