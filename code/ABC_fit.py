@@ -25,25 +25,22 @@ def conc_function(t,E,V,k, lambda_):
 # call a C++ function to solve E/V * (1 - np.exp(-lambda_*t)+k*np.exp(-lambda_*t)) for each time point
 
 data = pd.read_csv('data/vmn_mp_conc.txt', sep='\t',header=0)
+data_valved = pd.read_csv('data/vmn_ad_conc.txt', sep='\t',header=0)
 
 # convert time values to datetime objects
 data["time"] = data["time"].apply(lambda x: datetime.strptime(x, "%M:%S"))
+data_valved["time"] = data['time']#data_valved["time"].apply(lambda x: datetime.strptime(x, "%M:%S"))
 
 # calculate fraction of an hour by dividing the total number of minutes by 60
 data["fraction_of_hour"] = data["time"].apply(lambda x: (x.minute+x.second/60) / 60)
-
+data_valved["fraction_of_hour"] = data['fraction_of_hour']#data_valved["time"].apply(lambda x: (x.minute+x.second/60) / 60)
 # plot the experimental data
 #plt.plot(data['time'], data['conc_08'], 'o', label='Experimental data')
 
 
 # program an ABC algorithm to infer the decay rate lambda_, emission rate E and constant k
-# define the prior distributions
-# the prior distribution for the k rate is a uniform distribution between 0 and 1
-# the prior distribution for the emission rate is a uniform distribution between 0 and 1
+
 N=1000
-
-# define the prior distributions to be uniform with range 10^-3 to 10^3
-
 
 # define the distance function
 # the distance function is the sum of the squared differences between the model and the data
@@ -61,14 +58,26 @@ def ABC():
     k_post = []
     lambda_post = []
     dist = []
+
+    #mp type
     t0 = data['fraction_of_hour'][0:15] # no emission between 0 and 5 minutes
     t1 = data['fraction_of_hour'][15:43] # emission between 5 and 14 minutes
     t2 = data['fraction_of_hour'][43:136]# no emission between 14 and 45 minutes
     C0 = data['conc_08'][0:15].mean() # find the mean of the first 15 data points
     C0 = np.repeat(C0,len(t0)) # repeat the mean value to match the length of t0
+    C0_2m = np.repeat(data['conc_2'][0:15].mean(),len(t0))
+
+    #valved 
+    t0_valved = data_valved['fraction_of_hour'][0:15] # no emission between 0 and 5 minutes
+    t1_valved = data_valved['fraction_of_hour'][15:46] # emission between 5 and 14 minutes
+    t2_valved = data_valved['fraction_of_hour'][46:136]# no emission between 14 and 45 minutes
+    C0_valved = data_valved['conc_08'][0:15].mean() # find the mean of the first 15 data points
+    C0_valved = np.repeat(C0_valved,len(t0_valved)) # repeat the mean value to match the length of t0
+    C0_2m_valved = np.repeat(data_valved['conc_2'][0:15].mean(),len(t0_valved))
+
     i=0 # iteration counter
     #accepted = 0 # accepted counter
-    epsilon = 0.05 # distance threshold
+    epsilon = 1.116# distance threshold
     while len(E_post) < N:
         i+=1
         k_prior = np.random.uniform(0,1000,1)
@@ -79,31 +88,41 @@ def ABC():
         # solve C at the same time points as the data['time']
         # convert data['time'] to time then to fraction of an hour
         #repeat C0 times to match length of t0
-        C1 = conc_function(t1,E_prior,V,0,lambda_prior)
-        C2 = conc_function(t2,0,V,k_prior,lambda_prior)
+        #MP type 
+        C1 = conc_function(t1,E_prior,V,0,1.115)
+        C2 = conc_function(t2,0,V,k_prior,1.115)
         # add Gaussian noise to the mode
         C0 = C0 #+ np.random.normal(0,0.01,len(C0))
         C1 = C1 #+ np.random.normal(0,0.01,len(C1))
         C2 = C2 #+ np.random.normal(0,0.01,len(C2))
-
         C = np.concatenate((C0,C1,C2))
-        delta = distance(C,data['conc_08'])
+
+        C1_2m = conc_function(t1,E_prior,V,0,2*lambda_prior)
+        C2_2m = conc_function(t2,0,V,k_prior,2*lambda_prior)
+        C_2m = np.concatenate((C0_2m,C1_2m,C2_2m))
+
+        # valved type
+        C1_valved = conc_function(t1_valved,E_prior,V,0,lambda_prior)
+        C2_valved = conc_function(t2_valved,0,V,k_prior,lambda_prior)
+        # add Gaussian noise to the mode
+        C0_valved = C0_valved #+ np.random.normal(0,0.01,len(C0_valved))
+        C1_valved = C1_valved #+ np.random.normal(0,0.01,len(C1_valved))
+        C2_valved = C2_valved #+ np.random.normal(0,0.01,len(C2_valved))
+        C_valved = np.concatenate((C0_valved,C1_valved,C2_valved))
+
+        C1_2m_valved = conc_function(t1_valved,E_prior,V,0,2*lambda_prior)
+        C2_2m_valved = conc_function(t2_valved,0,V,k_prior,2*lambda_prior)
+        C_2m_valved = np.concatenate((C0_2m_valved,C1_2m_valved,C2_2m_valved))
+
+
+        delta = distance(C,data['conc_2'])#+distance(C_2m,data['conc_2'])+distance(C_valved,data_valved['conc_08'])+distance(C_2m_valved,data_valved['conc_2'])
         if delta < epsilon:
             E_post.append(E_prior)
             k_post.append(k_prior)
             lambda_post.append(lambda_prior)
             dist.append(delta)
             #accepted+=1
-            progress_bar.update(1)
-        #if i%5000 == 0:
-            #adjust the distance threshold to be 25% of the mean distance every 1000 iterations
-           # epsilon = np.mean(dist)*0.25
-            #stop the algorithm if the acceptance rate is < 0.01%
-           # if accepted/i < 0.0001:
-           #     print('Acceptance rate too low. Stopping algorithm')
-           #     break
-            #print('Iteration:',i)
-            #print('Acceptance:',accepted/i*100,'%')        
+            progress_bar.update(1)      
     progress_bar.close()
     #print the acceptance rate
     print('Final Acceptance:',N/i*100,'%')
@@ -135,36 +154,3 @@ np.savetxt('data/E_post.txt', E_post)
 np.savetxt('data/k_post.txt', k_post)
 np.savetxt('data/lambda_post.txt', lambda_post)
 np.savetxt('data/dist.txt', dist)
-
-# plot the posterior distribution in 3 subplots
-plt.figure(figsize=(5,5))
-plt.subplot(3,1,1)
-plt.hist(E_post, bins=20)
-plt.xlabel('E')
-plt.ylabel('Frequency')
-plt.subplot(3,1,2)
-plt.hist(k_post, bins=20)
-plt.xlabel('k')
-plt.ylabel('Frequency')
-plt.subplot(3,1,3)
-plt.hist(lambda_post, bins=20)
-plt.xlabel('lambda')
-plt.ylabel('Frequency')
-#plt.show()
-
-#plot the analytical solution with the experimental data
-
-t0 = data['fraction_of_hour'][0:15]
-t1 = data['fraction_of_hour'][15:43]
-t2 = data['fraction_of_hour'][43:136]
-#find mean of first 15 values from data['conc_08']
-C0=data['conc_08'][0:15].mean()
-#repeat C0 times to match length of t0
-C0 = np.repeat(C0,len(t0))
-C1 = conc_function(t1,E_post[0],V,0,lambda_post[0])
-C2 = conc_function(t2,0,V,k_post[0],lambda_post[0])
-C = np.concatenate((C0,C1,C2))
-plt.plot(data['time'], data['conc_08'], 'o', label='Experimental data')
-plt.plot(data['time'], C, label='Analytical solution')
-plt.legend()
-plt.show()

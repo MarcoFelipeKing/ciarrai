@@ -25,9 +25,25 @@ data["fraction_of_hour"] = data["time"].apply(lambda x: (x.minute+x.second/60) /
 #plot the analytical solution with the experimental data
 
 # read in E_post, k_post, lambda_post
-E_post = np.loadtxt('E_post.txt')
-k_post = np.loadtxt('k_post.txt')
-lambda_post = np.loadtxt('lambda_post.txt')
+E_post = np.loadtxt('data/E_post.txt')
+k_post = np.loadtxt('data/k_post.txt')
+lambda_post = np.loadtxt('data/lambda_post.txt')
+
+# plot the posterior distribution in 3 subplots
+plt.figure(figsize=(5,5))
+plt.subplot(3,1,1)
+plt.hist(E_post, bins=20)
+plt.xlabel('E')
+plt.ylabel('Frequency')
+plt.subplot(3,1,2)
+plt.hist(k_post, bins=20)
+plt.xlabel('k')
+plt.ylabel('Frequency')
+plt.subplot(3,1,3)
+plt.hist(lambda_post, bins=20)
+plt.xlabel('lambda')
+plt.ylabel('Frequency')
+plt.show()
 
 t0 = data['fraction_of_hour'][0:15]
 t1 = data['fraction_of_hour'][15:43]
@@ -39,7 +55,16 @@ C0 = np.repeat(C0,len(t0))
 C1 = conc_function(t1,E_post[0],V,0,lambda_post[0])
 C2 = conc_function(t2,0,V,k_post[0],lambda_post[0])
 C = np.concatenate((C0,C1,C2))
-plt.plot(data['time'], data['conc_08'], 'o', label='Experimental data')
+plt.plot(data['time'], data['conc_08'], 'o', label='80cm Experimental data')
+plt.plot(data['time'], data['conc_2'], 'o', label='2m Experimental data')
 plt.plot(data['time'], C, label='Analytical solution')
+#rotate x-axis labels
+plt.xticks(rotation=45)
+plt.xlabel('Time (min)')
+plt.ylabel('Concentration (mg/m^3)')
 plt.legend()
 plt.show()
+
+import pandas as pd 
+df = pd.DataFrame({"E_post:":E_post,"k_post:":k_post,"lambda_post:":lambda_post})
+print(df.describe())
