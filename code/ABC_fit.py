@@ -46,14 +46,16 @@ N=1000
 
 # define the distance function
 # the distance function is the sum of the squared differences between the model and the data
+#calculate the L2 norm between the prediction (model) and the data (data    
+
 def distance(model,data):
-    return np.sum((model - data)**2)
+    return np.linalg.norm(model-data)#sum(abs(a - b)**2 for a, b in zip(model, data))#np.sum(np.abs(model-data))#np.sum((model - data)**2)
 
 # define the ABC algorithm
 # for 1000 different E and k values run the model and calculate the distance
 # if the distance is less than 0.1, save the E and k values
 # Initialize the progress bar
-def ABC():
+def ABC(epsilon):
     print('Running ABC algorithm...')
     progress_bar = tqdm(total=N)
     E_post = []
@@ -79,12 +81,11 @@ def ABC():
 
     i=0 # iteration counter
     #accepted = 0 # accepted counter
-    epsilon = 8# distance threshold
     while len(E_post) < N:
         i+=1
-        k_prior = np.random.uniform(1E-3,100,1)
-        E_prior = np.random.uniform(1E-2,50,1)
-        lambda_prior = np.random.uniform(1E-2,50,1)
+        k_prior = np.random.uniform(1E-3,10,1)
+        E_prior = np.random.uniform(1E-2,10,1)
+        lambda_prior = np.random.uniform(1E-2,3,1)
         # solve piece-wise. between 0 and 10 minutes, E= prior value
         # between 0 and 5 minutes E = 0. between 5 and 14 minutes E = prior value. between 14 and 45 minutes E = 0
         # solve C at the same time points as the data['time']
@@ -116,7 +117,7 @@ def ABC():
         C2_2m_valved = conc_function(t2_valved,0,V,k_prior,2*lambda_prior)
         C_2m_valved = np.concatenate((C0_2m_valved,C1_2m_valved,C2_2m_valved))"""
 
-#select 0:15, 15:43, 55:136
+#select 0:15, 15:43, 55:136 from the data
         _temp = np.array(data.loc[list(range(0,44)) + list(range(55, 135)), ['conc_2']])
         #print(_temp)
         #print(C)
@@ -129,7 +130,8 @@ def ABC():
             k_post.append(k_prior)
             lambda_post.append(lambda_prior)
             dist.append(delta)
-            progress_bar.update(1)      
+            
+            progress_bar.update(1) 
     progress_bar.close()
     #print the acceptance rate
     print('Final Acceptance:',N/i*100,'%')
@@ -137,7 +139,7 @@ def ABC():
 
 
 # run the ABC algorithm
-E_post, k_post,lambda_post, dist = ABC()
+E_post, k_post,lambda_post, dist = ABC(epsilon=2)
 
 # function to sort the posterior distributions by distance
 def sort_posterior(E_post,k_post,lambda_post,dist):
@@ -151,13 +153,18 @@ def sort_posterior(E_post,k_post,lambda_post,dist):
     k_post = k_post[idx]
     lambda_post = lambda_post[idx]
     dist = dist[idx]
+    # make sure the posterior distributions are 1D vectors. select the first column only
+    #E_post = E_post[:,0]
+    #k_post = k_post[:,0]
+    #lambda_post = lambda_post[:,0]
+    #dist = dist[:,0]
     return E_post, k_post,lambda_post, dist
 
 # sort the posterior distributions by distance
 E_post, k_post,lambda_post,dist = sort_posterior(E_post,k_post,lambda_post,dist)
 
 #save the posterior distributions - don't append
-"""np.savetxt('data/E_post.txt', E_post)
+np.savetxt('data/E_post.txt', E_post)
 np.savetxt('data/k_post.txt', k_post)
 np.savetxt('data/lambda_post.txt', lambda_post)
-np.savetxt('data/dist.txt', dist)"""
+np.savetxt('data/dist.txt', dist)

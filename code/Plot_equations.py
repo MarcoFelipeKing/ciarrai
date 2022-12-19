@@ -12,8 +12,6 @@ V = 36.247 # volume of air
 def conc_function(t,E,V,k, lambda_):
     return E/V * (1 - np.exp(-lambda_*t))+k*np.exp(-lambda_*t) # K is a constant
 
-# call a C++ function to solve E/V * (1 - np.exp(-lambda_*t)+k*np.exp(-lambda_*t)) for each time point
-
 data = pd.read_csv('data/vmn_mp_conc.txt', sep='\t',header=0)
 
 # convert time values to datetime objects
