@@ -10,7 +10,7 @@ V = 36.247 # volume of air
 
 # the analytical solution to the ODE
 def conc_function(t,E,V,k, lambda_):
-    return E/V * (1 - np.exp(-lambda_*t)+k*np.exp(-lambda_*t)) # K is a constant
+    return E/V * (1 - np.exp(-lambda_*t))+k*np.exp(-lambda_*t) # K is a constant
 
 # call a C++ function to solve E/V * (1 - np.exp(-lambda_*t)+k*np.exp(-lambda_*t)) for each time point
 
@@ -52,7 +52,7 @@ t2 = data['fraction_of_hour'][55:135]# no emission between 14 and 45 minutes
 C0=data['conc_2'][0:15].mean()
 #repeat C0 times to match length of t0
 C0 = np.repeat(C0,len(t0))
-C1 = conc_function(t1,E_post[0],V,0,lambda_post[0])
+C1 = conc_function(t1,E_post[0],V,k_post[0],lambda_post[0])
 C2 = conc_function(t2,0,V,k_post[0],lambda_post[0])
 C = np.concatenate((C0,C1,C2))
 _temp = np.array(data.loc[list(range(0,44)) + list(range(55, 135)), ['conc_2']])
@@ -67,21 +67,6 @@ plt.ylabel('Concentration (mg/m^3)')
 plt.legend()
 plt.show()
 
-# plot the bivariate posterior distributions for E vs lanmbda and E vs k and lambda vs k on 3 subplots
-plt.figure(figsize=(5,9))
-plt.subplot(3,1,1)
-plt.scatter(E_post, lambda_post, s=1)
-plt.xlabel('E')
-plt.ylabel('lambda')
-plt.subplot(3,1,2)
-plt.scatter(E_post, k_post, s=1)
-plt.xlabel('E')
-plt.ylabel('k')
-plt.subplot(3,1,3)
-plt.scatter(lambda_post, k_post, s=1)
-plt.xlabel('lambda')
-plt.ylabel('k')
-plt.show()
 
 
 import pandas as pd 
