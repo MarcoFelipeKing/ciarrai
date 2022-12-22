@@ -23,7 +23,7 @@ V = 36.247 # volume of air
 
 # the analytical solution to the ODE
 def conc_function(t,E,V,k, lambda_):
-    res = E/V * (1 - np.exp(-lambda_*t)) + k * np.exp(-lambda_*t)
+    res = E/(V*lambda_) * (1 - np.exp(-lambda_*t)) + k * np.exp(-lambda_*t)
     return  res # K is a constant
 
 # call a C++ function to solve E/V * (1 - np.exp(-lambda_*t)+k*np.exp(-lambda_*t)) for each time point
@@ -83,16 +83,16 @@ def ABC(epsilon):
     #accepted = 0 # accepted counter
     while len(E_post) < N:
         i+=1
-        k_prior = np.random.uniform(1E-3,10,1)
-        E_prior = np.random.uniform(1E-2,10,1)
-        lambda_prior = np.random.uniform(1E-2,3,1)
+        k_prior = np.random.uniform(1E-3,100,1)
+        E_prior = np.random.uniform(1E-2,100,1)
+        lambda_prior = np.random.uniform(1E-2,30,1)
         # solve piece-wise. between 0 and 10 minutes, E= prior value
         # between 0 and 5 minutes E = 0. between 5 and 14 minutes E = prior value. between 14 and 45 minutes E = 0
         # solve C at the same time points as the data['time']
         # convert data['time'] to time then to fraction of an hour
         #repeat C0 times to match length of t0
         #MP type 
-        C1 = conc_function(t1,E_prior,V,k_prior,lambda_prior) # this is the mp experiment
+        C1 = conc_function(t1-np.min(t1),E_prior,V,0,lambda_prior) # this is the mp experiment
         C2 = conc_function(t2,0,V,k_prior,lambda_prior)
         # add Gaussian noise to the mode
         C0 = C0 #+ np.random.normal(0,0.005,len(C0))

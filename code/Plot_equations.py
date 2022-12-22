@@ -50,7 +50,7 @@ t2 = data['fraction_of_hour'][55:135]# no emission between 14 and 45 minutes
 C0=data['conc_2'][0:15].mean()
 #repeat C0 times to match length of t0
 C0 = np.repeat(C0,len(t0))
-C1 = conc_function(t1,E_post[0],V,k_post[0],lambda_post[0])
+C1 = conc_function(t1-np.min(t1),E_post[0],V,0,lambda_post[0])
 C2 = conc_function(t2,0,V,k_post[0],lambda_post[0])
 C = np.concatenate((C0,C1,C2))
 _temp = np.array(data.loc[list(range(0,44)) + list(range(55, 135)), ['conc_2']])
